@@ -405,9 +405,6 @@ class DebugClassLoaderTest extends TestCase
         ], $deprecations);
     }
 
-    /**
-     * @requires PHP >= 8.3
-     */
     public function testReturnTypePhp83()
     {
         $deprecations = [];

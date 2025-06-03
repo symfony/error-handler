@@ -214,10 +214,6 @@ class ErrorHandlerTest extends TestCase
                 \E_CORE_ERROR => [null, LogLevel::CRITICAL],
             ];
 
-            if (\PHP_VERSION_ID < 80400) {
-                $loggers[\E_STRICT] = [null, LogLevel::ERROR];
-            }
-
             $this->assertSame($loggers, $handler->setLoggers([]));
         } finally {
             restore_error_handler();
@@ -454,10 +450,6 @@ class ErrorHandlerTest extends TestCase
             \E_ERROR => [$bootLogger, LogLevel::CRITICAL],
             \E_CORE_ERROR => [$bootLogger, LogLevel::CRITICAL],
         ];
-
-        if (\PHP_VERSION_ID < 80400) {
-            $loggers[\E_STRICT] = [$bootLogger, LogLevel::ERROR];
-        }
 
         $this->assertSame($loggers, $handler->setLoggers([]));
 
