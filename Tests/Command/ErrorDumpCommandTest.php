@@ -102,11 +102,16 @@ class ErrorDumpCommandTest extends TestCase
         $entrypointLookup = $this->createMock(EntrypointLookupInterface::class);
 
         $application = new Application($kernel);
-        $application->add(new ErrorDumpCommand(
+        $command = new ErrorDumpCommand(
             new Filesystem(),
             $errorRenderer,
             $entrypointLookup,
-        ));
+        );
+        if (method_exists($application, 'addCommand')) {
+            $application->addCommand($command);
+        } else {
+            $application->add($command);
+        }
 
         return new CommandTester($application->find('error:dump'));
     }
