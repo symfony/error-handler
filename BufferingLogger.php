@@ -65,7 +65,7 @@ class BufferingLogger extends AbstractLogger
                 }
             }
 
-            error_log(sprintf('%s [%s] %s', date(\DateTimeInterface::RFC3339), $level, $message));
+            error_log(\sprintf('%s [%s] %s', date(\DateTimeInterface::RFC3339), $level, $message));
         }
     }
 }
