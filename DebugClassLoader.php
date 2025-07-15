@@ -846,8 +846,8 @@ class DebugClassLoader
         $iterable = $object = true;
         foreach ($typesMap as $n => $t) {
             if ('null' !== $n) {
-                $iterable = $iterable && (\in_array($n, ['array', 'iterable']) || str_contains($n, 'Iterator'));
-                $object = $object && (\in_array($n, ['callable', 'object', '$this', 'static']) || !isset(self::SPECIAL_RETURN_TYPES[$n]));
+                $iterable = $iterable && (\in_array($n, ['array', 'iterable'], true) || str_contains($n, 'Iterator'));
+                $object = $object && (\in_array($n, ['callable', 'object', '$this', 'static'], true) || !isset(self::SPECIAL_RETURN_TYPES[$n]));
             }
         }
 
