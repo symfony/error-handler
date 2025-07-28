@@ -284,7 +284,7 @@ class FlattenExceptionTest extends TestCase
     public function testToStringParent()
     {
         $exception = new \LogicException('This is message 1');
-        $exception = new \RuntimeException('This is messsage 2', 500, $exception);
+        $exception = new \RuntimeException('This is message 2', 500, $exception);
 
         $flattened = FlattenException::createFromThrowable($exception);
 
