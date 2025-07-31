@@ -11,6 +11,9 @@
 
 namespace Symfony\Component\ErrorHandler\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresPhp;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\ErrorHandler\Tests\Fixtures\ExtendsDeprecatedParent;
 use Symfony\Component\ErrorHandler\DebugClassLoader;
@@ -37,9 +40,7 @@ class DebugClassLoaderTest extends TestCase
         putenv('SYMFONY_PATCH_TYPE_DECLARATIONS'.(false !== $this->patchTypes ? '='.$this->patchTypes : ''));
     }
 
-    /**
-     * @runInSeparateProcess
-     */
+    #[RunInSeparateProcess]
     public function testIdempotence()
     {
         DebugClassLoader::enable();
@@ -115,9 +116,7 @@ class DebugClassLoaderTest extends TestCase
         $this->assertTrue(class_exists(Fixtures\ClassAlias::class, true));
     }
 
-    /**
-     * @dataProvider provideDeprecatedSuper
-     */
+    #[DataProvider('provideDeprecatedSuper')]
     public function testDeprecatedSuper(string $class, string $super, string $type)
     {
         set_error_handler(fn () => false);
@@ -405,9 +404,7 @@ class DebugClassLoaderTest extends TestCase
         ], $deprecations);
     }
 
-    /**
-     * @requires PHP >= 8.3
-     */
+    #[RequiresPhp('>=8.3')]
     public function testReturnTypePhp83()
     {
         $deprecations = [];
