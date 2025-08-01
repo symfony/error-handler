@@ -117,7 +117,7 @@ class FlattenExceptionTest extends TestCase
     }
 
     #[DataProvider('flattenDataProvider')]
-    public function testFlattenHttpException(\Throwable $exception)
+    public function testFlattenHttpException(\Throwable $exception, string $expectedClass)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $flattened2 = FlattenException::createFromThrowable($exception);
@@ -140,7 +140,7 @@ class FlattenExceptionTest extends TestCase
     }
 
     #[DataProvider('flattenDataProvider')]
-    public function testPrevious(\Throwable $exception)
+    public function testPrevious(\Throwable $exception, string $expectedClass)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $flattened2 = FlattenException::createFromThrowable($exception);
@@ -164,14 +164,14 @@ class FlattenExceptionTest extends TestCase
     }
 
     #[DataProvider('flattenDataProvider')]
-    public function testLine(\Throwable $exception)
+    public function testLine(\Throwable $exception, string $expectedClass)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $this->assertSame($exception->getLine(), $flattened->getLine());
     }
 
     #[DataProvider('flattenDataProvider')]
-    public function testFile(\Throwable $exception)
+    public function testFile(\Throwable $exception, string $expectedClass)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $this->assertSame($exception->getFile(), $flattened->getFile());
