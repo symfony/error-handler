@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\ErrorHandler\Tests\Exception;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\ErrorHandler\Exception\FlattenException;
 use Symfony\Component\ErrorHandler\Tests\Fixtures\StringErrorCodeException;
@@ -113,9 +114,7 @@ class FlattenExceptionTest extends TestCase
         $this->assertEquals(['Retry-After' => 120], $flattened->getHeaders());
     }
 
-    /**
-     * @dataProvider flattenDataProvider
-     */
+    #[DataProvider('flattenDataProvider')]
     public function testFlattenHttpException(\Throwable $exception)
     {
         $flattened = FlattenException::createFromThrowable($exception);
@@ -138,9 +137,7 @@ class FlattenExceptionTest extends TestCase
         $this->assertSame('DivisionByZeroError', $flattened->getClass(), 'The class is set to the class of the original error');
     }
 
-    /**
-     * @dataProvider flattenDataProvider
-     */
+    #[DataProvider('flattenDataProvider')]
     public function testPrevious(\Throwable $exception)
     {
         $flattened = FlattenException::createFromThrowable($exception);
@@ -164,36 +161,28 @@ class FlattenExceptionTest extends TestCase
         $this->assertEquals('ParseError', $flattened->getClass(), 'The class is set to the class of the original exception');
     }
 
-    /**
-     * @dataProvider flattenDataProvider
-     */
+    #[DataProvider('flattenDataProvider')]
     public function testLine(\Throwable $exception)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $this->assertSame($exception->getLine(), $flattened->getLine());
     }
 
-    /**
-     * @dataProvider flattenDataProvider
-     */
+    #[DataProvider('flattenDataProvider')]
     public function testFile(\Throwable $exception)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $this->assertSame($exception->getFile(), $flattened->getFile());
     }
 
-    /**
-     * @dataProvider stringAndIntDataProvider
-     */
+    #[DataProvider('stringAndIntDataProvider')]
     public function testCode(\Throwable $exception)
     {
         $flattened = FlattenException::createFromThrowable($exception);
         $this->assertSame($exception->getCode(), $flattened->getCode());
     }
 
-    /**
-     * @dataProvider flattenDataProvider
-     */
+    #[DataProvider('flattenDataProvider')]
     public function testToArray(\Throwable $exception, string $expectedClass)
     {
         $flattened = FlattenException::createFromThrowable($exception);
