@@ -21,6 +21,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use Prophecy\Prophecy\ProphecySubjectInterface;
 use ProxyManager\Proxy\ProxyInterface;
+use Psr\Log\LogLevel;
 use Symfony\Component\DependencyInjection\Argument\LazyClosure;
 use Symfony\Component\ErrorHandler\Internal\TentativeTypes;
 use Symfony\Component\VarExporter\LazyObjectInterface;
@@ -189,7 +190,7 @@ class DebugClassLoader
     {
         // Ensures we don't hit https://bugs.php.net/42098
         class_exists(ErrorHandler::class);
-        class_exists(\Psr\Log\LogLevel::class);
+        class_exists(LogLevel::class);
 
         if (!\is_array($functions = spl_autoload_functions())) {
             return;
