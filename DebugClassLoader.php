@@ -380,7 +380,7 @@ class DebugClassLoader
 
         // Don't trigger deprecations for classes in the same vendor
         if ($class !== $className) {
-            $vendor = preg_match('/^namespace ([^;\\\\\s]++)[;\\\\]/m', @file_get_contents($refl->getFileName()), $vendor) ? $vendor[1].'\\' : '';
+            $vendor = $refl->getFileName() && preg_match('/^namespace ([^;\\\\\s]++)[;\\\\]/m', @file_get_contents($refl->getFileName()) ?: '', $vendor) ? $vendor[1].'\\' : '';
             $vendorLen = \strlen($vendor);
         } elseif (2 > $vendorLen = 1 + (strpos($class, '\\') ?: strpos($class, '_'))) {
             $vendorLen = 0;
