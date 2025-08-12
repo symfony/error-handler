@@ -1071,11 +1071,11 @@ class DebugClassLoader
                 $code[$startLine] = "     * @return $returnType\n".$code[$startLine];
             } else {
                 $code[$startLine] .= <<<EOTXT
-    /**
-     * @return $returnType
-     */
+                        /**
+                         * @return $returnType
+                         */
 
-EOTXT;
+                    EOTXT;
             }
 
             $fileOffset += substr_count($code[$startLine], "\n") - 1;
