@@ -62,9 +62,6 @@ class FileLinkFormatter
         return false;
     }
 
-    /**
-     * @internal
-     */
     public function __serialize(): array
     {
         $this->fileLinkFormat = $this->getFileLinkFormat();
