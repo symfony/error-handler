@@ -120,7 +120,7 @@ class DebugClassLoaderTest extends TestCase
     {
         set_error_handler(fn () => false);
         $e = error_reporting(0);
-        trigger_error('', E_USER_DEPRECATED);
+        trigger_error('', \E_USER_DEPRECATED);
 
         class_exists('Test\\'.__NAMESPACE__.'\\'.$class, true);
 
@@ -568,3 +568,5 @@ class ClassLoader
         }
     }
 }
+
+// @php-cs-fixer-ignore error_suppression This file is explicitly expected to not silence each of trigger_error calls
