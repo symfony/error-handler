@@ -506,7 +506,7 @@ class ErrorHandlerTest extends TestCase
             ->method('log')
             ->with(LogLevel::CRITICAL, 'Uncaught Exception: Foo message', ['exception' => $exception]);
 
-        $handler->setExceptionHandler(function () use ($handler, $mockLogger) {
+        $handler->setExceptionHandler(static function () use ($handler, $mockLogger) {
             $handler->setDefaultLogger($mockLogger);
         });
 
@@ -555,7 +555,7 @@ class ErrorHandlerTest extends TestCase
         $exception = new \Error("Class 'IReallyReallyDoNotExistAnywhereInTheRepositoryISwear' not found");
 
         $handler = new ErrorHandler();
-        $handler->setExceptionHandler(function () use (&$args) {
+        $handler->setExceptionHandler(static function () use (&$args) {
             $args = \func_get_args();
         });
 
@@ -570,7 +570,7 @@ class ErrorHandlerTest extends TestCase
     {
         $this->expectException(\Exception::class);
         $handler = new ErrorHandler();
-        $handler->setExceptionHandler(function ($e) use ($handler) {
+        $handler->setExceptionHandler(static function ($e) use ($handler) {
             $handler->setExceptionHandler(null);
             $handler->handleException($e);
         });
@@ -651,7 +651,7 @@ class ErrorHandlerTest extends TestCase
             $this->markTestSkipped('zend.assertions is forcibly disabled');
         }
 
-        set_error_handler(function () {});
+        set_error_handler(static function () {});
         $ini = [
             ini_set('zend.assertions', 1),
             ini_set('assert.active', 1),

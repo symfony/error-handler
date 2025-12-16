@@ -578,7 +578,7 @@ class ErrorHandler
         }
         if (!$handler) {
             if (null === $error && $exitCode = self::$exitCode) {
-                register_shutdown_function('register_shutdown_function', function () use ($exitCode) { exit($exitCode); });
+                register_shutdown_function('register_shutdown_function', static function () use ($exitCode) { exit($exitCode); });
             }
 
             return;
@@ -617,7 +617,7 @@ class ErrorHandler
         }
 
         if ($exit && $exitCode = self::$exitCode) {
-            register_shutdown_function('register_shutdown_function', function () use ($exitCode) { exit($exitCode); });
+            register_shutdown_function('register_shutdown_function', static function () use ($exitCode) { exit($exitCode); });
         }
     }
 

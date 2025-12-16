@@ -91,7 +91,7 @@ class ErrorDumpCommandTest extends TestCase
         $errorRenderer = $this->createStub(ErrorRendererInterface::class);
         $errorRenderer
             ->method('render')
-            ->willReturnCallback(function (HttpException $e) {
+            ->willReturnCallback(static function (HttpException $e) {
                 $exception = FlattenException::createFromThrowable($e);
                 $exception->setAsString(\sprintf('<html><body>Error %s</body></html>', $e->getStatusCode()));
 
