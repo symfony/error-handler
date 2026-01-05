@@ -73,7 +73,7 @@ class ErrorHandlerTest extends TestCase
     #[WithoutErrorHandler]
     public function testErrorGetLast()
     {
-        $logger = $this->createMock(LoggerInterface::class);
+        $logger = new NullLogger();
         $handler = ErrorHandler::register();
         $handler->setDefaultLogger($logger);
         $handler->screamAt(\E_ALL);
@@ -202,7 +202,7 @@ class ErrorHandlerTest extends TestCase
     public function testDefaultLogger()
     {
         try {
-            $logger = $this->createMock(LoggerInterface::class);
+            $logger = new NullLogger();
             $handler = ErrorHandler::register();
 
             $handler->setDefaultLogger($logger, \E_NOTICE);
