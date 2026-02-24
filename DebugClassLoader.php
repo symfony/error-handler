@@ -139,6 +139,16 @@ class DebugClassLoader
     private static array $methodTraits = [];
     private static array $fileOffsets = [];
 
+    /**
+     * @var array<string, string>|null Re-mapping configuration for vendor comparison. Maps namespace prefixes to the value to be used for comparison.
+     */
+    private static ?array $namespaceRemappings = null;
+
+    /**
+     * @var array<string, true|string> Caches vendor comparison strings. Maps FQCNs to vendor prefixes; true = root namespace (matches every vendor).
+     */
+    private static array $vendorPrefixCache = [];
+
     public function __construct(callable $classLoader)
     {
         $this->classLoader = $classLoader;
@@ -185,9 +195,20 @@ class DebugClassLoader
 
     /**
      * Wraps all autoloaders.
+     *
+     * @param array<string, string>|null $deprecationsNamespacesMapping Overrides the vendor-boundary detection used to
+     *                                                                  decide whether deprecation notices are emitted.
+     *                                                                  Each key is a fully-qualified class name or
+     *                                                                  namespace prefix of the class being loaded;
+     *                                                                  the corresponding value is the vendor string it
+     *                                                                  will be compared against instead of its natural
+     *                                                                  first namespace segment.
+     *                                                                  Pass null (default) to use the first namespace segment as vendor name.
      */
-    public static function enable(): void
+    public static function enable(/* ?array $deprecationsNamespacesMapping = null */): void
     {
+        $deprecationsNamespacesMapping = 1 <= \func_num_args() ? func_get_arg(0) : null;
+
         // Ensures we don't hit https://bugs.php.net/42098
         class_exists(ErrorHandler::class);
         class_exists(LogLevel::class);
@@ -195,6 +216,8 @@ class DebugClassLoader
         if (!\is_array($functions = spl_autoload_functions())) {
             return;
         }
+
+        self::$namespaceRemappings = $deprecationsNamespacesMapping;
 
         foreach ($functions as $function) {
             spl_autoload_unregister($function);
@@ -217,6 +240,9 @@ class DebugClassLoader
         if (!\is_array($functions = spl_autoload_functions())) {
             return;
         }
+
+        self::$namespaceRemappings = null;
+        self::$vendorPrefixCache = [];
 
         foreach ($functions as $function) {
             spl_autoload_unregister($function);
@@ -376,18 +402,10 @@ class DebugClassLoader
         }
         $deprecations = [];
 
+        // $className is a human-readable name used in deprecation messages: for anonymous classes
+        // (whose internal name contains "@anonymous\0" followed by a file path) it is replaced
+        // by a display-friendly form such as "ParentClass@anonymous"; for named classes it equals $class.
         $className = str_contains($class, "@anonymous\0") ? (get_parent_class($class) ?: key(class_implements($class)) ?: 'class').'@anonymous' : $class;
-
-        // Don't trigger deprecations for classes in the same vendor
-        if ($class !== $className) {
-            $vendor = $refl->getFileName() && preg_match('/^namespace ([^;\\\\\s]++)[;\\\\]/m', @file_get_contents($refl->getFileName()) ?: '', $vendor) ? $vendor[1].'\\' : '';
-            $vendorLen = \strlen($vendor);
-        } elseif (2 > $vendorLen = 1 + (strpos($class, '\\') ?: strpos($class, '_'))) {
-            $vendorLen = 0;
-            $vendor = '';
-        } else {
-            $vendor = str_replace('_', '\\', substr($class, 0, $vendorLen));
-        }
 
         $parent = get_parent_class($class) ?: null;
         self::$returnTypes[$class] = [];
@@ -432,13 +450,13 @@ class DebugClassLoader
             if (!isset(self::$checkedClasses[$use])) {
                 $this->checkClass($use);
             }
-            if (isset(self::$deprecated[$use]) && strncmp($vendor, str_replace('_', '\\', $use), $vendorLen) && !isset(self::$deprecated[$class])) {
+            if (isset(self::$deprecated[$use]) && !isset(self::$deprecated[$class]) && !$this->areFromTheSameVendor($class, $use)) {
                 $type = class_exists($class, false) ? 'class' : (interface_exists($class, false) ? 'interface' : 'trait');
                 $verb = class_exists($use, false) || interface_exists($class, false) ? 'extends' : (interface_exists($use, false) ? 'implements' : 'uses');
 
                 $deprecations[] = \sprintf('The "%s" %s %s "%s" that is deprecated%s', $className, $type, $verb, $use, self::$deprecated[$use]);
             }
-            if (isset(self::$internal[$use]) && strncmp($vendor, str_replace('_', '\\', $use), $vendorLen)) {
+            if (isset(self::$internal[$use]) && !$this->areFromTheSameVendor($class, $use)) {
                 $deprecations[] = \sprintf('The "%s" %s is considered internal%s It may change without further notice. You should not use it from "%s".', $use, class_exists($use, false) ? 'class' : (interface_exists($use, false) ? 'interface' : 'trait'), self::$internal[$use], $className);
             }
             if (isset(self::$method[$use])) {
@@ -449,7 +467,7 @@ class DebugClassLoader
                         self::$method[$class] = self::$method[$use];
                     }
                 } elseif (!$refl->isInterface()) {
-                    if (!strncmp($vendor, str_replace('_', '\\', $use), $vendorLen)
+                    if ($this->areFromTheSameVendor($class, $use)
                         && str_starts_with($className, 'Symfony\\')
                         && (!class_exists(InstalledVersions::class)
                             || 'symfony/symfony' !== InstalledVersions::getRootPackage()['name'])
@@ -517,15 +535,9 @@ class DebugClassLoader
                 continue;
             }
 
-            if (null === $ns = self::$methodTraits[$method->getFileName()][$method->getStartLine()] ?? null) {
-                $ns = $vendor;
-                $len = $vendorLen;
-            } elseif (2 > $len = 1 + (strpos($ns, '\\') ?: strpos($ns, '_'))) {
-                $len = 0;
-                $ns = '';
-            } else {
-                $ns = str_replace('_', '\\', substr($ns, 0, $len));
-            }
+            // If this method was introduced via a trait, use the trait's vendor for checks
+            // rather than the containing class' vendor.
+            $traitClass = self::$methodTraits[$method->getFileName()][$method->getStartLine()] ?? null;
 
             if ($parent && isset(self::$finalMethods[$parent][$method->name])) {
                 [$declaringClass, $message] = self::$finalMethods[$parent][$method->name];
@@ -534,7 +546,7 @@ class DebugClassLoader
 
             if (isset(self::$internalMethods[$class][$method->name])) {
                 [$declaringClass, $message] = self::$internalMethods[$class][$method->name];
-                if (strncmp($ns, $declaringClass, $len)) {
+                if (!$this->areFromTheSameVendor($traitClass ?? $class, $declaringClass)) {
                     $deprecations[] = \sprintf('The "%s::%s()" method is considered internal%s It may change without further notice. You should not extend it from "%s".', $declaringClass, $method->name, $message, $className);
                 }
             }
@@ -586,7 +598,7 @@ class DebugClassLoader
                 if ($canAddReturnType && 'docblock' !== $this->patchTypes['force']) {
                     $this->patchMethod($method, $returnType, $declaringFile, $normalizedType);
                 }
-                if (!isset($doc['deprecated']) && strncmp($ns, $declaringClass, $len)) {
+                if (!isset($doc['deprecated']) && !$this->areFromTheSameVendor($traitClass ?? $class, $declaringClass)) {
                     if ('docblock' === $this->patchTypes['force']) {
                         $this->patchMethod($method, $returnType, $declaringFile, $normalizedType);
                     } elseif ('' !== $declaringClass && $this->patchTypes['deprecations']) {
@@ -801,6 +813,60 @@ class DebugClassLoader
         }
 
         return $ownInterfaces;
+    }
+
+    /**
+     * @param string $class The class being loaded and inspected for deprecation violations
+     * @param string $use   The parent class, interface, or trait it extends, implements, or uses
+     */
+    private function areFromTheSameVendor(string $class, string $use): bool
+    {
+        $vendor = self::$vendorPrefixCache[$class] ?? $this->getVendorEntry($class);
+
+        return true === $vendor || $vendor === (self::$vendorPrefixCache[$use] ?? $this->getVendorEntry($use));
+    }
+
+    /**
+     * Returns the vendor string for a class, computing and caching it if necessary. Takes
+     * remapping into account, see {@see enable()}.
+     *
+     * @return true|string the vendor prefix to consider; true when the class is in the root namespace
+     *                     (matches every vendor)
+     */
+    private function getVendorEntry(string $class): bool|string
+    {
+        if (isset(self::$vendorPrefixCache[$class])) {
+            return self::$vendorPrefixCache[$class];
+        }
+
+        // Anonymous classes carry a file path in their internal name instead of a namespace,
+        // so the vendor prefix must be derived from the namespace declared in their source file.
+        // Named classes use the class name itself as the lookup key.
+        if (str_contains($class, "@anonymous\0")) {
+            $refl = new \ReflectionClass($class);
+            $lookupKey = $refl->getFileName() && preg_match('/^namespace ([^;\\\\\s]++)[;\\\\]/m', @file_get_contents($refl->getFileName()) ?: '', $m) ? $m[1] : '';
+        } else {
+            $lookupKey = $class;
+        }
+
+        if (\is_array(self::$namespaceRemappings)) {
+            // Find longest namespace prefix for which a mapping exists
+            $mappedNamespace = $lookupKey;
+            while (!isset(self::$namespaceRemappings[$mappedNamespace]) && false !== $pos = strrpos($mappedNamespace, '\\')) {
+                $mappedNamespace = substr($mappedNamespace, 0, $pos);
+            }
+            if (isset(self::$namespaceRemappings[$mappedNamespace])) {
+                return self::$vendorPrefixCache[$class] = self::$namespaceRemappings[$mappedNamespace];
+            }
+        }
+
+        $sep = strpos($lookupKey, '\\') ?: strpos($lookupKey, '_');
+        if (!$sep) {
+            // The class is in the root namespace: it matches every vendor.
+            return self::$vendorPrefixCache[$class] = true;
+        }
+
+        return self::$vendorPrefixCache[$class] = substr($lookupKey, 0, $sep);
     }
 
     private function setReturnType(string $types, string $class, string $method, string $filename, ?string $parent, ?\ReflectionType $returnType = null): void

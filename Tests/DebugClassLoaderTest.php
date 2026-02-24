@@ -15,7 +15,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\ErrorHandler\Tests\Fixtures\ExtendsDeprecatedParent;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\DeprecatedClass;
 use Symfony\Component\ErrorHandler\DebugClassLoader;
+use Symfony\Component\ErrorHandler\Tests\Fixtures\ExtendsDeprecatedClassInTheSameVendor;
 
 class DebugClassLoaderTest extends TestCase
 {
@@ -357,6 +359,90 @@ class DebugClassLoaderTest extends TestCase
     public function testEvaluatedCode()
     {
         $this->assertTrue(class_exists(Fixtures\DefinitionInEvaluatedCode::class, true));
+    }
+
+    #[RunInSeparateProcess]
+    #[DataProvider('provideExposeDeprecations')]
+    public function testExposeDeprecations(bool $expectDeprecation, ?array $deprecationsNamespacesMapping)
+    {
+        DebugClassLoader::enable($deprecationsNamespacesMapping);
+
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        new ExtendsDeprecatedClassInTheSameVendor();
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame($expectDeprecation ? [
+            'The "Symfony\Component\ErrorHandler\Tests\Fixtures\ExtendsDeprecatedClassInTheSameVendor" class extends "Symfony\Component\ErrorHandler\Tests\Fixtures\DeprecatedClass" that is deprecated but this is a test deprecation notice.',
+        ] : [], $deprecations);
+    }
+
+    public static function provideExposeDeprecations(): array
+    {
+        return [
+            [false, null], // default current behavior -> should not be exposed
+            [false, []], // no matching (empty array) -> should not be exposed
+            [false, ['No\Matching' => 'foo']], // no matching -> should not be exposed
+            [true, [ExtendsDeprecatedClassInTheSameVendor::class => 'foo']], // only $class matched -> different vendors -> should be exposed
+            [false, ['Symfony\Component\ErrorHandler\Tests\Fixtures' => 'foo']], // both $class and $use matched to same vendor -> should not be exposed
+            [false, ['Symfony\Component\ErrorHandler' => 'foo']], // both $class and $use matched to same vendor -> should not be exposed
+            [false, ['Symfony' => 'foo']], // both $class and $use matched to same vendor -> should not be exposed
+            [true, [ExtendsDeprecatedClassInTheSameVendor::class => 'foo', DeprecatedClass::class => 'bar']], // both matched but to different vendors -> should be exposed
+        ];
+    }
+
+    #[RunInSeparateProcess]
+    #[DataProvider('provideMuteDeprecations')]
+    public function testMuteDeprecations(bool $expectDeprecation, ?array $deprecationsNamespacesMapping)
+    {
+        DebugClassLoader::enable($deprecationsNamespacesMapping);
+
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        class_exists('Test\\'.__NAMESPACE__.'\DeprecatedParentClass', true);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame($expectDeprecation ? [
+            'The "Test\Symfony\Component\ErrorHandler\Tests\DeprecatedParentClass" class extends "Symfony\Component\ErrorHandler\Tests\Fixtures\DeprecatedClass" that is deprecated but this is a test deprecation notice.',
+        ] : [], $deprecations);
+    }
+
+    public static function provideMuteDeprecations(): array
+    {
+        return [
+            [true, null], // default current behavior -> should not be muted
+            [true, []], // no matching (empty array) -> should not be muted
+            [true, ['No\Matching' => 'foo']], // no matching -> should not be muted
+            [true, ['Test' => 'No\Matching']], // only $class matched, vendors differ -> should not be muted
+            [false, ['Test\\'.__NAMESPACE__.'\DeprecatedParentClass' => 'x', 'Symfony\Component\ErrorHandler\Tests\Fixtures\DeprecatedClass' => 'x']], // both matched to same vendor via FQCN -> should be muted
+            [false, ['Test\\'.__NAMESPACE__ => 'x', 'Symfony\Component\ErrorHandler\Tests\Fixtures' => 'x']], // both matched to same vendor via namespace prefix -> should be muted
+            [false, ['Test' => 'Symfony']], // $class matched to 'Symfony', $use default first segment 'Symfony' -> same vendor -> should be muted
+            [true, ['Test' => 'one', 'Symfony' => 'two']], // both matched but to different vendors -> should not be muted
+        ];
+    }
+
+    public function testRootNamespaceDontTriggerDeprecations()
+    {
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        require __DIR__.'/Fixtures/RootNamespace.php';
+
+        spl_autoload_call(\RootNamespace::class);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame([], $deprecations);
     }
 
     public function testReturnType()
