@@ -343,11 +343,51 @@ class DebugClassLoaderTest extends TestCase
 
     public function testVirtualUseWithMagicCall()
     {
+        // This is like the preceding testVirtualUse() test, but this time the class contains
+        // __call/__callStatic magic methods. We want the notices to be triggered in this case:
+        // If the interface changes the "@method" to a real declaration in the future, the class
+        // will need to contain that method.
+
         $deprecations = [];
         set_error_handler(function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
         $e = error_reporting(\E_USER_DEPRECATED);
 
         class_exists('Test\\'.ExtendsVirtualMagicCall::class, true);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame([
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::interfaceMethod(): string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticReturningMethod(): static".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::sameLineInterfaceMethod($arg)".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::sameLineInterfaceMethodNoBraces()".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::newLineInterfaceMethod()": Some description!',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::newLineInterfaceMethodNoBraces(): \stdClass": Description.',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::invalidInterfaceMethod(): unknownType".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::invalidInterfaceMethodNoBraces(): unknownType|string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::complexInterfaceMethod($arg, ...$args)".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::complexInterfaceMethodTyped($arg, int ...$args): array<string, int>|string[]|int": Description ...',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethod(): Foo&Bar".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodNoBraces(): mixed".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodTyped(int $arg): \stdClass": Description.',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualMagicCall" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodTypedNoBraces(): \stdClass[]".',
+        ], $deprecations);
+    }
+
+    public function testVirtualUseWithMagicCallInterface()
+    {
+        // When an interface uses "@method" annotations and, at the same time, requires the __call method to be
+        // implemented, do not trigger notices. The assumption is that this interface documents an API contract
+        // using a pattern of magic calls, for example like https://github.com/predis/predis/blob/deee2b6d605eb6401446f6f6354414ab7571a5a0/src/ClientInterface.php.
+        // This has the risk of false negatives, i. e. missing notices in case the interface intends to add real
+        // methods in the future.
+
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        class_exists('Test\\'.ExtendsVirtualMagicCallInterface::class, true);
 
         error_reporting($e);
         restore_error_handler();
@@ -556,6 +596,10 @@ class ClassLoader
             }');
         } elseif ('Test\\'.ExtendsVirtualMagicCall::class === $class) {
             eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualMagicCall extends \\'.__NAMESPACE__.'\Fixtures\VirtualClassMagicCall implements \\'.__NAMESPACE__.'\Fixtures\VirtualInterface {
+            }');
+        } elseif ('Test\\'.ExtendsVirtualMagicCallInterface::class === $class) {
+            eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualMagicCallInterface implements \\'.__NAMESPACE__.'\Fixtures\VirtualInterfaceWithCall {
+                public function __call(string $name, array $arguments): mixed { return null; }
             }');
         } elseif ('Test\\'.ReturnType::class === $class) {
             return $fixtureDir.\DIRECTORY_SEPARATOR.'ReturnType.php';
