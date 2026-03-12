@@ -157,6 +157,8 @@ class ErrorHandler
     /**
      * Calls a function and turns any PHP error into \ErrorException.
      *
+     * @param-immediately-invoked-callable $function
+     *
      * @throws \ErrorException When $function(...$arguments) triggers a PHP error
      */
     public static function call(callable $function, mixed ...$arguments): mixed
