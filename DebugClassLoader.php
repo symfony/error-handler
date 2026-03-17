@@ -468,6 +468,15 @@ class DebugClassLoader
             }
         }
 
+        // When the parent is a concrete class, we will trigger deprecation notices to make it aware that it needs
+        // to add the new methods announced with @method. The parent will have to provide all those methods.
+        // For child classes this means they will not need to deal with @method coming from any of the interfaces
+        // the parent implements.
+        // Put those interfaces that we can ignore into $parentInterfaces.
+        // The ternary makes use of the fact that abstract parent classes will accumulate the methods in self::$method,
+        // so !isset(self::$method[$parent]) indicates a concrete parent class.
+        $parentInterfaces = ($parent && !isset(self::$method[$parent])) ? class_implements($parent, false) : [];
+
         // Detect if the parent is annotated
         foreach ($parentAndOwnInterfaces + class_uses($class, false) as $use) {
             if (!isset(self::$checkedClasses[$use])) {
@@ -483,7 +492,9 @@ class DebugClassLoader
                 $deprecations[] = \sprintf('The "%s" %s is considered internal%s It may change without further notice. You should not use it from "%s".', $use, class_exists($use, false) ? 'class' : (interface_exists($use, false) ? 'interface' : 'trait'), self::$internal[$use], $className);
             }
             if (isset(self::$method[$use])) {
-                if ($refl->isAbstract()) {
+                if ($refl->isAbstract() || $refl->isInterface()) {
+                    // Abstract classes and interfaces inherit @method from interfaces they
+                    // implement directly or through inheritance.
                     if (isset(self::$method[$class])) {
                         self::$method[$class] = array_merge(self::$method[$class], self::$method[$use]);
                     } else {
@@ -499,6 +510,11 @@ class DebugClassLoader
                         continue;
                     }
                     foreach (self::$method[$use] as [$interface, $static, $returnType, $name, $description]) {
+                        if (isset($parentInterfaces[$interface])) {
+                            // The @method annotation comes from an interface that has already been implemented by a concrete parent class,
+                            // so we can ignore it here.
+                            continue;
+                        }
                         $realName = substr($name, 0, strpos($name, '('));
                         if (!$refl->hasMethod($realName) || !($methodRefl = $refl->getMethod($realName))->isPublic() || ($static xor $methodRefl->isStatic())) {
                             $deprecations[] = \sprintf('Class "%s" should implement method "%s::%s%s"%s', $className, ($static ? 'static ' : '').$interface, $name, $returnType ? ': '.$returnType : '', null === $description ? '.' : ': '.$description);
