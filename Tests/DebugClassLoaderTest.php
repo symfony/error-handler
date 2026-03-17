@@ -340,6 +340,40 @@ class DebugClassLoaderTest extends TestCase
         ], $deprecations);
     }
 
+    public function testVirtualUseWithInheritedInterface()
+    {
+        // A concrete class implementing a child interface should also receive notices for @method
+        // annotations declared on parent interfaces, even without abstract classes in between.
+        // (ExtendsVirtualSubInterfaceDirect implements VirtualSubInterface, which extends VirtualInterface)
+
+        $deprecations = [];
+        set_error_handler(function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(E_USER_DEPRECATED);
+
+        class_exists('Test\\'.ExtendsVirtualSubInterfaceDirect::class, true);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame([
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualSubInterface::subInterfaceMethod(): string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::interfaceMethod(): string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticReturningMethod(): static".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::sameLineInterfaceMethod($arg)".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::sameLineInterfaceMethodNoBraces()".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::newLineInterfaceMethod()": Some description!',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::newLineInterfaceMethodNoBraces(): \stdClass": Description.',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::invalidInterfaceMethod(): unknownType".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::invalidInterfaceMethodNoBraces(): unknownType|string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::complexInterfaceMethod($arg, ...$args)".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::complexInterfaceMethodTyped($arg, int ...$args): array<string, int>|string[]|int": Description ...',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethod(): Foo&Bar".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodNoBraces(): mixed".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodTyped(int $arg): \stdClass": Description.',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualSubInterfaceDirect" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualInterface::staticMethodTypedNoBraces(): \stdClass[]".',
+        ], $deprecations);
+    }
+
     public function testVirtualUseWithMagicCall()
     {
         // This is like the preceding testVirtualUse() test, but this time the class contains
@@ -591,6 +625,9 @@ class ClassLoader
         } elseif ('Test\\'.ExtendsVirtualAbstractBase::class === $class) {
             eval('namespace Test\\'.__NAMESPACE__.'; abstract class ExtendsVirtualAbstractBase extends \\'.__NAMESPACE__.'\Fixtures\VirtualClass implements \\'.__NAMESPACE__.'\Fixtures\VirtualInterface {
                 public function ownAbstractBaseMethod() { }
+            }');
+        } elseif ('Test\\'.ExtendsVirtualSubInterfaceDirect::class === $class) {
+            eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualSubInterfaceDirect implements \\'.__NAMESPACE__.'\Fixtures\VirtualSubInterface {
             }');
         } elseif ('Test\\'.ExtendsVirtualMagicCall::class === $class) {
             eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualMagicCall extends \\'.__NAMESPACE__.'\Fixtures\VirtualClassMagicCall implements \\'.__NAMESPACE__.'\Fixtures\VirtualInterface {
