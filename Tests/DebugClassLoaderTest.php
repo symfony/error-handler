@@ -349,8 +349,8 @@ class DebugClassLoaderTest extends TestCase
         // (ExtendsVirtualSubInterfaceDirect implements VirtualSubInterface, which extends VirtualInterface)
 
         $deprecations = [];
-        set_error_handler(function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
-        $e = error_reporting(E_USER_DEPRECATED);
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
 
         class_exists('Test\\'.ExtendsVirtualSubInterfaceDirect::class, true);
 
