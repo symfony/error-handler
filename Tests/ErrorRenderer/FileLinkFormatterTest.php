@@ -90,7 +90,7 @@ class FileLinkFormatterTest extends TestCase
     #[DataProvider('providePathMappings')]
     public function testIdeFileLinkFormatWithPathMappingParameters($mappings)
     {
-        $params = array_reduce($mappings, function ($c, $m) {
+        $params = array_reduce($mappings, static function ($c, $m) {
             return "$c&".implode('>', $m);
         }, '');
         $sut = new FileLinkFormatter("vscode://file/%f:%l$params");
