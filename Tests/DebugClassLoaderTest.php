@@ -122,7 +122,7 @@ class DebugClassLoaderTest extends TestCase
     {
         set_error_handler(static fn () => false);
         $e = error_reporting(0);
-        @trigger_error('', \E_USER_DEPRECATED);
+        trigger_error('', \E_USER_DEPRECATED);
 
         class_exists('Test\\'.__NAMESPACE__.'\\'.$class, true);
 
