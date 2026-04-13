@@ -121,7 +121,7 @@ class DebugClassLoaderTest extends TestCase
     {
         set_error_handler(static fn () => false);
         $e = error_reporting(0);
-        trigger_error('', E_USER_DEPRECATED);
+        trigger_error('', \E_USER_DEPRECATED);
 
         class_exists('Test\\'.__NAMESPACE__.'\\'.$class, true);
 
@@ -349,7 +349,7 @@ class DebugClassLoaderTest extends TestCase
 
         $deprecations = [];
         set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
-        $e = error_reporting(E_USER_DEPRECATED);
+        $e = error_reporting(\E_USER_DEPRECATED);
 
         class_exists('Test\\'.ExtendsVirtualSubInterfaceDirect::class, true);
 
