@@ -632,3 +632,5 @@ class ClassLoader
         }
     }
 }
+
+// @php-cs-fixer-ignore error_suppression This file is explicitly expected to not silence each of trigger_error calls
