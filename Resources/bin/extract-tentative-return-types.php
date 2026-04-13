@@ -53,7 +53,7 @@ while (false !== $file = fgets(\STDIN)) {
 
     $code = preg_split('{^\s*(?:(?:abstract )?class|interface|trait) ([^\s]++)}m', $code, -1, \PREG_SPLIT_DELIM_CAPTURE);
 
-    if (1 === count($code)) {
+    if (1 === \count($code)) {
         continue;
     }
 
@@ -66,7 +66,7 @@ while (false !== $file = fgets(\STDIN)) {
 
         echo "        '$class' => [\n";
 
-        preg_replace_callback('{@tentative-return-type.*?[\s]function ([^(]++)[^)]++\)\s*+:\s*+([^\n;\{]++)}s', function ($m) {
+        preg_replace_callback('{@tentative-return-type.*?[\s]function ([^(]++)[^)]++\)\s*+:\s*+([^\n;\{]++)}s', static function ($m) {
             $m[2] = str_replace(' ', '', $m[2]);
             echo "            '$m[1]' => '$m[2]',\n";
 
