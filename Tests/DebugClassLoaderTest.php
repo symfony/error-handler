@@ -478,7 +478,7 @@ class DebugClassLoaderTest extends TestCase
         ], $deprecations);
     }
 
-    #[RequiresPhp('>=8.3')]
+    #[RequiresPhp('>=8.3.0')]
     public function testReturnTypePhp83()
     {
         $deprecations = [];
