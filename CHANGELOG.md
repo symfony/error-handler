@@ -5,6 +5,7 @@ CHANGELOG
 ---
 
  * Add argument `$deprecationsNamespacesMapping` to `DebugClassLoader::enable()` to configure namespace-to-vendor remapping for deprecation checks
+ * Trigger `@method` deprecation notices on abstract classes
 
 7.3
 ---

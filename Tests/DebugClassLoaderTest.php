@@ -410,6 +410,44 @@ class DebugClassLoaderTest extends TestCase
         ], $deprecations);
     }
 
+    public function testVirtualUseWithAbstractClass()
+    {
+        // An abstract class can announce @method annotations the same way an interface does, to give
+        // subclasses time to implement the method before it becomes a real abstract requirement.
+        // ExtendsVirtualAbstractClass extends VirtualAbstract (abstract) and does not implement any of its
+        // @method annotations.
+
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        class_exists('Test\\'.ExtendsVirtualAbstractClass::class, true);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame([
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualAbstractClass" should implement method "Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualAbstract::abstractClassMethod(): string".',
+            'Class "Test\Symfony\Component\ErrorHandler\Tests\ExtendsVirtualAbstractClass" should implement method "static Symfony\Component\ErrorHandler\Tests\Fixtures\VirtualAbstract::abstractStaticMethod(): \stdClass": Description.',
+        ], $deprecations);
+    }
+
+    public function testVirtualUseWithAbstractClassImplementingTheMethod()
+    {
+        // When the concrete subclass already declares the announced @method, no deprecation is raised.
+
+        $deprecations = [];
+        set_error_handler(static function ($type, $msg) use (&$deprecations) { $deprecations[] = $msg; });
+        $e = error_reporting(\E_USER_DEPRECATED);
+
+        class_exists('Test\\'.ExtendsVirtualAbstractClassImpl::class, true);
+
+        error_reporting($e);
+        restore_error_handler();
+
+        $this->assertSame([], $deprecations);
+    }
+
     public function testVirtualUseWithMagicCallInterface()
     {
         // When an interface uses "@method" annotations and, at the same time, requires the __call method to be
@@ -721,6 +759,14 @@ class ClassLoader
         } elseif ('Test\\'.ExtendsVirtualMagicCallInterface::class === $class) {
             eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualMagicCallInterface implements \\'.__NAMESPACE__.'\Fixtures\VirtualInterfaceWithCall {
                 public function __call(string $name, array $arguments): mixed { return null; }
+            }');
+        } elseif ('Test\\'.ExtendsVirtualAbstractClass::class === $class) {
+            eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualAbstractClass extends \\'.__NAMESPACE__.'\Fixtures\VirtualAbstract {
+            }');
+        } elseif ('Test\\'.ExtendsVirtualAbstractClassImpl::class === $class) {
+            eval('namespace Test\\'.__NAMESPACE__.'; class ExtendsVirtualAbstractClassImpl extends \\'.__NAMESPACE__.'\Fixtures\VirtualAbstract {
+                public function abstractClassMethod(): string { return ""; }
+                public static function abstractStaticMethod(): \stdClass { return new \stdClass(); }
             }');
         } elseif ('Test\\'.ReturnType::class === $class) {
             return $fixtureDir.\DIRECTORY_SEPARATOR.'ReturnType.php';

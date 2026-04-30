@@ -436,7 +436,7 @@ class DebugClassLoader
                 }
             }
 
-            if ($refl->isInterface() && isset($doc['method'])) {
+            if (($refl->isInterface() || $refl->isAbstract()) && isset($doc['method'])) {
                 foreach ($doc['method'] as $name => [$static, $returnType, $signature, $description]) {
                     if ($refl->hasMethod($static ? '__callStatic' : '__call')) {
                         // When the interface has "virtual" @method declarations but at the same time contains a __call/__callStatic magic method,
@@ -444,6 +444,11 @@ class DebugClassLoader
                         // "@method" annotations never intend to actually add the method to the interface, but are used to document the "virtual"
                         // API provided by the interface through the technical implementation of magic calls. This might cause false negatives
                         // (missing notices) in the case that such interfaces are later amended with actual (real) methods.
+                        continue;
+                    }
+                    if ($refl->hasMethod($name)) {
+                        // The abstract class already declares the method (abstract or with a default implementation),
+                        // so the @method annotation is just documentation; no deprecation should be triggered for subclasses.
                         continue;
                     }
                     self::$method[$class][] = [$class, $static, $returnType, $name.$signature, $description];
