@@ -62,6 +62,22 @@ class DebugClassLoaderTest extends TestCase
         $this->fail('DebugClassLoader did not register');
     }
 
+    #[RunInSeparateProcess]
+    public function testEnableClearsVendorPrefixCacheOnRemapChange()
+    {
+        $reflClass = new \ReflectionClass(DebugClassLoader::class);
+        $cacheProp = $reflClass->getProperty('vendorPrefixCache');
+        $remapProp = $reflClass->getProperty('namespaceRemappings');
+
+        DebugClassLoader::enable(['App' => 'Symfony']);
+        $cacheProp->setValue(null, ['App\\Foo' => 'Symfony']);
+
+        DebugClassLoader::enable(['App' => 'Acme']);
+
+        $this->assertSame([], $cacheProp->getValue(), 'enable() must clear the vendor prefix cache');
+        $this->assertSame(['App' => 'Acme'], $remapProp->getValue(), 'enable() must replace the namespace remappings');
+    }
+
     public function testThrowingClass()
     {
         $this->expectException(\Exception::class);

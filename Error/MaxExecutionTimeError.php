@@ -11,6 +11,13 @@
 
 namespace Symfony\Component\ErrorHandler\Error;
 
+/**
+ * Raised on shutdown when PHP's max_execution_time is exceeded.
+ *
+ * Instances bypass http_response_code() and header() calls in the default
+ * renderer to avoid PHP 8.5+ warnings when adjusting response state after
+ * the timeout has fired.
+ */
 class MaxExecutionTimeError extends FatalError
 {
 }
