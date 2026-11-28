@@ -28,7 +28,7 @@ class ErrorDumpCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tmpDir = sys_get_temp_dir().'/error_pages';
+        $this->tmpDir = sys_get_temp_dir().'/sf_error-handler_'.hash('xxh32', __FILE__);
 
         $fs = new Filesystem();
         $fs->remove($this->tmpDir);
